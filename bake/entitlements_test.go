@@ -19,6 +19,12 @@ func TestEvaluateToExistingPath(t *testing.T) {
 	tempDir, err := osutil.GetLongPathName(t.TempDir())
 	require.NoError(t, err)
 
+	// On some platforms (notably macOS), paths may be canonicalized with an
+	// additional prefix (e.g. /private). Normalize expectations to match the
+	// canonical path returned by filepath.EvalSymlinks/evaluateToExistingPath.
+	expTempDir, err := filepath.EvalSymlinks(tempDir)
+	require.NoError(t, err)
+
 	// Setup temporary directory structure for testing
 	existingFile := filepath.Join(tempDir, "existing_file")
 	require.NoError(t, os.WriteFile(existingFile, []byte("test"), 0644))
@@ -43,37 +49,37 @@ func TestEvaluateToExistingPath(t *testing.T) {
 		{
 			name:      "Existing file",
 			input:     existingFile,
-			expected:  existingFile,
+			expected:  filepath.Join(expTempDir, "existing_file"),
 			expectErr: false,
 		},
 		{
 			name:      "Existing directory",
 			input:     existingDir,
-			expected:  existingDir,
+			expected:  filepath.Join(expTempDir, "existing_dir"),
 			expectErr: false,
 		},
 		{
 			name:      "Symlink to file",
 			input:     symlinkToFile,
-			expected:  existingFile,
+			expected:  filepath.Join(expTempDir, "existing_file"),
 			expectErr: false,
 		},
 		{
 			name:      "Symlink to directory",
 			input:     symlinkToDir,
-			expected:  existingDir,
+			expected:  filepath.Join(expTempDir, "existing_dir"),
 			expectErr: false,
 		},
 		{
 			name:      "Non-existent path",
 			input:     nonexistentPath,
-			expected:  tempDir,
+			expected:  expTempDir,
 			expectErr: false,
 		},
 		{
 			name:      "Non-existent intermediate path",
 			input:     filepath.Join(tempDir, "nonexistent", "file.txt"),
-			expected:  tempDir,
+			expected:  expTempDir,
 			expectErr: false,
 		},
 		{
