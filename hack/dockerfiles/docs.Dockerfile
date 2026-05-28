@@ -36,15 +36,16 @@ RUN --mount=target=/context \
 set -e
 rsync -a /context/. .
 
-# Compare the checked-in docs against freshly generated output.
-if ! diff -ru /out/reference docs/reference >/dev/null; then
+# Replace checked-in docs with freshly generated output and ensure this does not
+# leave the repository dirty, matching the contract of `make docs`.
+rm -rf docs/reference
+cp -r /out/reference docs/reference
+cp /out/bake-stdlib.md docs/bake-stdlib.md
+
+git add -A docs/reference docs/bake-stdlib.md
+if ! git diff --cached --quiet; then
   echo >&2 'ERROR: Docs result differs. Please update with "make docs"'
-  diff -ru /out/reference docs/reference || true
-  exit 1
-fi
-if ! diff -u /out/bake-stdlib.md docs/bake-stdlib.md >/dev/null; then
-  echo >&2 'ERROR: Docs result differs. Please update with "make docs"'
-  diff -u /out/bake-stdlib.md docs/bake-stdlib.md || true
+  git diff --cached
   exit 1
 fi
 EOT
